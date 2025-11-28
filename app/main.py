@@ -1,11 +1,13 @@
 import time
 import logging
+import io
 from contextlib import asynccontextmanager
-from fastapi import Depends, FastAPI, HTTPException, status, Query
+from fastapi import Depends, FastAPI, HTTPException, status, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import List
+import pandas as pd
 
 from . import models, schemas
 from .auth import (
@@ -143,6 +145,231 @@ def update_user_interests(
     db.refresh(user)
     
     return user
+
+
+@app.post("/users/{user_id}/publications/upload", response_model=schemas.PublicationUploadResponse)
+async def upload_publications(
+    user_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Загрузить публикации пользователя из Excel или CSV файла
+    
+    Ожидаемые столбцы:
+    - Название статьи (обязательно)
+    - Соавторы
+    - Цитирование
+    - Журнал
+    - Год публикации
+    - Имя автора
+    
+    ⚠️ Публичный endpoint - не требует авторизации
+    """
+    # Проверяем, что пользователь существует
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {user_id} not found"
+        )
+    
+    # Читаем файл
+    contents = await file.read()
+    file_extension = file.filename.split('.')[-1].lower() if file.filename else ''
+    
+    imported_count = 0
+    failed_count = 0
+    publications = []
+    
+    try:
+        # Определяем формат файла и читаем данные
+        if file_extension in ['xlsx', 'xls']:
+            # Excel файл
+            df = pd.read_excel(io.BytesIO(contents), engine='openpyxl')
+        elif file_extension == 'csv':
+            # CSV файл
+            df = pd.read_csv(io.BytesIO(contents), encoding='utf-8-sig')
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported file format. Please upload Excel (.xlsx, .xls) or CSV (.csv) file"
+            )
+        
+        # Маппинг столбцов (поддерживаем разные варианты названий)
+        column_mapping = {
+            'название статьи': 'title',
+            'название': 'title',
+            'title': 'title',
+            'ArticleTitle': 'title',
+            'соавторы': 'coauthors',
+            'coauthors': 'coauthors',
+            'Co-authors': 'coauthors',
+            'соавтор': 'coauthors',
+            'цитирование': 'citations',
+            'citations': 'citations',
+            'Citations': 'citations',
+            'цитаты': 'citations',
+            'журнал': 'journal',
+            'Source': 'journal',
+            'journal': 'journal',
+            'год публикации': 'publication_year',
+            'год': 'publication_year',
+            'year': 'publication_year',
+            'publication_year': 'publication_year',
+            'Year of Publication': 'publication_year',
+            'имя автора': 'author_name',
+            'author_name': 'author_name',
+            'Author': 'author_name',
+            'автор': 'author_name',
+        }
+        
+        # Нормализуем названия столбцов (приводим к нижнему регистру)
+        df.columns = df.columns.str.strip().str.lower()
+        
+        # Проверяем наличие обязательного столбца "название статьи"
+        title_column = None
+        for col in df.columns:
+            if col in ['название статьи', 'название', 'title']:
+                title_column = col
+                break
+        
+        if not title_column:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Required column 'Название статьи' (or 'Title') not found in file"
+            )
+        
+        # Удаляем старые публикации пользователя (опционально, можно закомментировать для добавления)
+        # db.query(models.UserPublication).filter(models.UserPublication.user_id == user_id).delete()
+        
+        # Обрабатываем каждую строку
+        for index, row in df.iterrows():
+            try:
+                # Извлекаем данные с обработкой различных названий столбцов
+                title = str(row[title_column]).strip() if pd.notna(row[title_column]) else None
+                
+                if not title or title == 'nan':
+                    failed_count += 1
+                    continue
+                
+                # Ищем другие столбцы
+                coauthors = None
+                citations = None
+                journal = None
+                publication_year = None
+                author_name = None
+                
+                for col in df.columns:
+                    col_lower = col.lower().strip()
+                    if col_lower in ['соавторы', 'coauthors', 'соавтор']:
+                        coauthors = str(row[col]).strip() if pd.notna(row[col]) else None
+                    elif col_lower in ['цитирование', 'citations', 'цитаты']:
+                        citations = str(row[col]).strip() if pd.notna(row[col]) else None
+                    elif col_lower in ['журнал', 'journal']:
+                        journal = str(row[col]).strip() if pd.notna(row[col]) else None
+                    elif col_lower in ['год публикации', 'год', 'year', 'publication_year']:
+                        publication_year = str(row[col]).strip() if pd.notna(row[col]) else None
+                    elif col_lower in ['имя автора', 'author_name', 'автор']:
+                        author_name = str(row[col]).strip() if pd.notna(row[col]) else None
+                
+                # Создаём публикацию
+                publication = models.UserPublication(
+                    user_id=user_id,
+                    title=title,
+                    coauthors=coauthors,
+                    citations=citations,
+                    journal=journal,
+                    publication_year=publication_year,
+                    author_name=author_name
+                )
+                
+                db.add(publication)
+                imported_count += 1
+                
+            except Exception as e:
+                logger.error(f"Error processing row {index}: {e}")
+                failed_count += 1
+                continue
+        
+        db.commit()
+        
+        # Получаем все публикации пользователя для ответа
+        user_publications = db.query(models.UserPublication).filter(
+            models.UserPublication.user_id == user_id
+        ).all()
+        
+        publications = [schemas.UserPublicationResponse.model_validate(pub) for pub in user_publications]
+        
+        return schemas.PublicationUploadResponse(
+            message=f"Successfully imported {imported_count} publications",
+            imported_count=imported_count,
+            failed_count=failed_count,
+            publications=publications
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error uploading publications: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing file: {str(e)}"
+        )
+
+
+@app.get("/users/{user_id}/publications", response_model=List[schemas.UserPublicationResponse])
+def get_user_publications(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Получить все публикации пользователя
+    
+    ⚠️ Публичный endpoint - не требует авторизации
+    """
+    # Проверяем, что пользователь существует
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {user_id} not found"
+        )
+    
+    publications = db.query(models.UserPublication).filter(
+        models.UserPublication.user_id == user_id
+    ).all()
+    
+    return publications
+
+
+@app.delete("/users/{user_id}/publications/{publication_id}")
+def delete_user_publication(
+    user_id: int,
+    publication_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Удалить публикацию пользователя
+    
+    ⚠️ Публичный endpoint - не требует авторизации
+    """
+    publication = db.query(models.UserPublication).filter(
+        models.UserPublication.id == publication_id,
+        models.UserPublication.user_id == user_id
+    ).first()
+    
+    if not publication:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Publication not found"
+        )
+    
+    db.delete(publication)
+    db.commit()
+    
+    return {"message": "Publication deleted successfully"}
 
 
 @app.get("/search", response_model=schemas.SearchResponse)

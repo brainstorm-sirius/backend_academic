@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, ForeignKey
+from sqlalchemy.orm import relationship
 from .database import Base
 
 
@@ -17,6 +18,9 @@ class User(Base):
     orcid_id = Column(String(255))
     interests_list = Column(Text, nullable=True)  # Список научных интересов пользователя
     password_hash = Column(String(255), nullable=False)
+    
+    # Связь с публикациями
+    publications = relationship("UserPublication", back_populates="user", cascade="all, delete-orphan")
 
 
 class Author(Base):
@@ -51,3 +55,22 @@ class AuthorInterest(Base):
     articles_count = Column(Integer)
     main_interest = Column(String(255))
     cluster = Column(Integer)
+
+
+class UserPublication(Base):
+    """Публикации зарегистрированных пользователей"""
+    __tablename__ = "user_publications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # Данные из файла
+    title = Column(Text, nullable=False)  # Название статьи
+    coauthors = Column(Text)  # Соавторы
+    citations = Column(String(50))  # Цитирование
+    journal = Column(String(500))  # Журнал
+    publication_year = Column(String(10))  # Год публикации
+    author_name = Column(String(500))  # Имя автора
+    
+    # Связь с пользователем
+    user = relationship("User", back_populates="publications")

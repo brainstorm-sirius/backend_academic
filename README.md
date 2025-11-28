@@ -148,6 +148,57 @@ curl -X PUT http://localhost:8000/users/interests \
   }'
 ```
 
+#### Загрузить публикации из файла
+`POST /users/{user_id}/publications/upload`
+
+**⚠️ Публичный endpoint - не требует авторизации**
+
+```bash
+# Загрузка CSV файла
+curl -X POST "http://localhost:8000/users/1/publications/upload" \
+  -F "file=@publications.csv"
+
+# Загрузка Excel файла
+curl -X POST "http://localhost:8000/users/1/publications/upload" \
+  -F "file=@publications.xlsx"
+```
+
+**Формат файла**: CSV или Excel со столбцами:
+- Название статьи (обязательно)
+- Соавторы
+- Цитирование
+- Журнал
+- Год публикации
+- Имя автора
+
+**Ответ:**
+```json
+{
+  "message": "Successfully imported 10 publications",
+  "imported_count": 10,
+  "failed_count": 0,
+  "publications": [...]
+}
+```
+
+#### Получить публикации пользователя
+`GET /users/{user_id}/publications`
+
+**⚠️ Публичный endpoint - не требует авторизации**
+
+```bash
+curl http://localhost:8000/users/1/publications
+```
+
+#### Удалить публикацию
+`DELETE /users/{user_id}/publications/{publication_id}`
+
+**⚠️ Публичный endpoint - не требует авторизации**
+
+```bash
+curl -X DELETE http://localhost:8000/users/1/publications/5
+```
+
 ### Поиск
 
 #### Объединённый поиск (пользователи + авторы)

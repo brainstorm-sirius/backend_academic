@@ -48,7 +48,7 @@ def get_current_user(
 ) -> models.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Not authenticated. Please provide a valid Bearer token in the Authorization header.",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -58,7 +58,11 @@ def get_current_user(
         if user_id is None:
             raise credentials_exception
     except JWTError as exc:
-        raise credentials_exception from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token. Please login again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
 
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:

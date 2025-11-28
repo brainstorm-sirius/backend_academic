@@ -156,3 +156,35 @@ class RecommendationResponse(BaseModel):
     """Ответ с рекомендациями"""
     recommendations: List[AuthorRecommendation]
     processing_time: float
+
+
+class UserPublicationBase(BaseModel):
+    """Базовая схема публикации пользователя"""
+    title: str = Field(..., description="Название статьи")
+    coauthors: Optional[str] = Field(None, description="Соавторы")
+    citations: Optional[str] = Field(None, description="Цитирование")
+    journal: Optional[str] = Field(None, description="Журнал")
+    publication_year: Optional[str] = Field(None, description="Год публикации")
+    author_name: Optional[str] = Field(None, description="Имя автора")
+
+
+class UserPublicationCreate(UserPublicationBase):
+    """Схема для создания публикации"""
+    pass
+
+
+class UserPublicationResponse(UserPublicationBase):
+    """Схема ответа с публикацией"""
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class PublicationUploadResponse(BaseModel):
+    """Ответ после загрузки публикаций"""
+    message: str
+    imported_count: int
+    failed_count: int
+    publications: List[UserPublicationResponse]
