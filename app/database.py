@@ -2,7 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")
+# База данных хранится в /app/data/users.db для правильной работы с volumes
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////app/data/users.db")
 
 engine = create_engine(
     DATABASE_URL,
