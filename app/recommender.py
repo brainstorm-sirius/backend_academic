@@ -1,7 +1,3 @@
-"""
-Модуль для рекомендаций учёных по интересам
-Использует обученную ML модель для поиска похожих авторов
-"""
 import os
 import pickle
 import re
@@ -19,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class CollaborationRecommender:
-    """Класс для рекомендации учёных на основе их научных интересов"""
     
     def __init__(self):
         self.df = None
@@ -30,12 +25,6 @@ class CollaborationRecommender:
         self.max_interests = 1
         
     def load_model(self, model_path: str = "model"):
-        """
-        Загружает обученную модель из указанной папки
-        
-        Args:
-            model_path: Путь к папке с моделью
-        """
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model path {model_path} does not exist")
             
@@ -61,16 +50,6 @@ class CollaborationRecommender:
             raise
 
     def _create_target_profile(self, interests_list: List[str], publications_list: Optional[List[str]] = None) -> str:
-        """
-        Создаёт профиль пользователя на основе интересов и публикаций
-        
-        Args:
-            interests_list: Список научных интересов
-            publications_list: Опциональный список публикаций
-            
-        Returns:
-            Строка профиля для векторизации
-        """
         profile_parts = interests_list.copy()
         
         if publications_list:
@@ -84,17 +63,6 @@ class CollaborationRecommender:
         return ' '.join(profile_parts)
 
     def recommend(self, interests: List[str], publications: Optional[List[str]] = None, top_k: int = 10) -> List[dict]:
-        """
-        Получает рекомендации учёных на основе интересов
-        
-        Args:
-            interests: Список научных интересов пользователя
-            publications: Опциональный список публикаций для анализа
-            top_k: Количество рекомендаций
-            
-        Returns:
-            Список словарей с рекомендациями, отсортированный по total_score
-        """
         if self.df is None or self.vectorizer is None or self.knn_model is None:
             raise ValueError("Model not loaded. Call load_model() first.")
         
@@ -113,11 +81,9 @@ class CollaborationRecommender:
                 
             author_data = self.df.iloc[idx]
             
-            # Нормализуем метрики
             productivity_score = author_data['Articles_Count'] / self.max_articles if self.max_articles > 0 else 0
             diversity_score = author_data['Interests_Count'] / self.max_interests if self.max_interests > 0 else 0
             
-            # Комбинированный скор
             total_score = (
                 similarity * 0.6 +
                 productivity_score * 0.25 +
@@ -139,6 +105,5 @@ class CollaborationRecommender:
             if len(recommendations) >= top_k:
                 break
         
-        # Сортируем по total_score и возвращаем top_k
         return sorted(recommendations, key=lambda x: x['total_score'], reverse=True)[:top_k]
 

@@ -16,15 +16,13 @@ class User(Base):
     wos_id = Column(String(255))
     rsci_id = Column(String(255))
     orcid_id = Column(String(255))
-    interests_list = Column(Text, nullable=True)  # Список научных интересов пользователя
+    interests_list = Column(Text, nullable=True)
     password_hash = Column(String(255), nullable=False)
     
-    # Связь с публикациями
     publications = relationship("UserPublication", back_populates="user", cascade="all, delete-orphan")
 
 
 class Author(Base):
-    """Незарегистрированные авторы со статьями"""
     __tablename__ = "authors"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -38,17 +36,16 @@ class Author(Base):
     pmcid = Column(String(50))
     nihms_id = Column(String(50))
     doi = Column(String(255))
-    author_name = Column(String(500), index=True)  # Для поиска по имени
-    author_id = Column(String(100), index=True)  # Уникальный ID автора
+    author_name = Column(String(500), index=True)
+    author_id = Column(String(100), index=True)
 
 
 class AuthorInterest(Base):
-    """Научные интересы незарегистрированных авторов"""
     __tablename__ = "author_interests"
 
     id = Column(Integer, primary_key=True, index=True)
     author_id = Column(String(100), unique=True, nullable=False, index=True)
-    author_name = Column(String(500), index=True)  # Для поиска по имени
+    author_name = Column(String(500), index=True)
     interests_list = Column(Text)
     keywords_list = Column(Text)
     interests_count = Column(Integer)
@@ -58,19 +55,16 @@ class AuthorInterest(Base):
 
 
 class UserPublication(Base):
-    """Публикации зарегистрированных пользователей"""
     __tablename__ = "user_publications"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
-    # Данные из файла
-    title = Column(Text, nullable=False)  # Название статьи
-    coauthors = Column(Text)  # Соавторы
-    citations = Column(String(50))  # Цитирование
-    journal = Column(String(500))  # Журнал
-    publication_year = Column(String(10))  # Год публикации
-    author_name = Column(String(500))  # Имя автора
+    title = Column(Text, nullable=False)
+    coauthors = Column(Text)
+    citations = Column(String(50))
+    journal = Column(String(500))
+    publication_year = Column(String(10))
+    author_name = Column(String(500))
     
-    # Связь с пользователем
     user = relationship("User", back_populates="publications")

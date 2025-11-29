@@ -1,7 +1,3 @@
-"""
-Скрипт для импорта CSV файлов в базу данных
-Использование: python import_csv.py
-"""
 import csv
 import os
 from pathlib import Path
@@ -9,12 +5,10 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine
 from app.models import Base, Author, AuthorInterest
 
-# Создаём таблицы, если их ещё нет
 Base.metadata.create_all(bind=engine)
 
 
 def import_authors_csv(db: Session, csv_path: str, batch_size: int = 1000):
-    """Импортирует authors_expanded_with_ids.csv в таблицу authors"""
     print(f"Начинаю импорт {csv_path}...")
     
     count = 0
@@ -41,23 +35,20 @@ def import_authors_csv(db: Session, csv_path: str, batch_size: int = 1000):
             batch.append(author)
             count += 1
             
-            # Вставляем батчами для производительности
             if len(batch) >= batch_size:
                 db.bulk_save_objects(batch)
                 db.commit()
                 batch = []
                 print(f"Импортировано {count} записей...")
     
-    # Вставляем оставшиеся записи
     if batch:
         db.bulk_save_objects(batch)
         db.commit()
     
-    print(f"✅ Импорт завершён! Всего импортировано {count} записей авторов.")
+    print(f"Импорт завершён! Всего импортировано {count} записей авторов.")
 
 
 def import_interests_csv(db: Session, csv_path: str, batch_size: int = 1000):
-    """Импортирует authors_scientific_interests.csv в таблицу author_interests"""
     print(f"Начинаю импорт {csv_path}...")
     
     count = 0
@@ -72,20 +63,17 @@ def import_interests_csv(db: Session, csv_path: str, batch_size: int = 1000):
         for row in reader:
             row_num += 1
             
-            # Получаем author_id и проверяем, что он не пустой
             author_id = row.get('Author_ID', '').strip() if row.get('Author_ID') else ''
             
-            # Отладочный вывод для первых нескольких строк
             if row_num <= 3:
                 print(f"Отладка строка {row_num}: Author_ID = '{author_id}' (тип: {type(author_id)}, длина: {len(author_id)})")
                 print(f"  Все ключи в row: {list(row.keys())}")
                 print(f"  Значение row.get('Author_ID'): '{row.get('Author_ID')}'")
             
-            # Пропускаем строки без author_id (обязательное поле)
             if not author_id:
                 skipped += 1
-                if skipped <= 5:  # Показываем первые несколько пропущенных
-                    print(f"⚠️  Пропущена строка {row_num}: пустой Author_ID")
+                if skipped <= 5:
+                    print(f"Пропущена строка {row_num}: пустой Author_ID")
                 continue
             
             interest = AuthorInterest(
@@ -101,7 +89,6 @@ def import_interests_csv(db: Session, csv_path: str, batch_size: int = 1000):
             batch.append(interest)
             count += 1
             
-            # Вставляем батчами для производительности
             if len(batch) >= batch_size:
                 try:
                     db.bulk_save_objects(batch)
@@ -110,9 +97,8 @@ def import_interests_csv(db: Session, csv_path: str, batch_size: int = 1000):
                     print(f"Импортировано {count} записей... (пропущено {skipped}, дубликатов {duplicates})")
                 except Exception as e:
                     db.rollback()
-                    # Если ошибка уникальности, пробуем вставлять по одной
                     if "UNIQUE constraint" in str(e) or "IntegrityError" in str(type(e).__name__):
-                        print(f"⚠️  Обнаружены дубликаты, переключаюсь на поштучную вставку...")
+                        print(f"Обнаружены дубликаты, переключаюсь на поштучную вставку...")
                         for item in batch:
                             try:
                                 db.add(item)
@@ -125,11 +111,10 @@ def import_interests_csv(db: Session, csv_path: str, batch_size: int = 1000):
                                 else:
                                     raise
                     else:
-                        print(f"❌ Ошибка при вставке: {e}")
+                        print(f"Ошибка при вставке: {e}")
                         raise
                     batch = []
     
-    # Вставляем оставшиеся записи
     if batch:
         try:
             db.bulk_save_objects(batch)
@@ -137,7 +122,6 @@ def import_interests_csv(db: Session, csv_path: str, batch_size: int = 1000):
         except Exception as e:
             db.rollback()
             if "UNIQUE constraint" in str(e) or "IntegrityError" in str(type(e).__name__):
-                # Поштучная вставка оставшихся
                 for item in batch:
                     try:
                         db.add(item)
@@ -152,50 +136,45 @@ def import_interests_csv(db: Session, csv_path: str, batch_size: int = 1000):
             else:
                 raise
     
-    print(f"✅ Импорт завершён! Всего импортировано {count} записей научных интересов.")
+    print(f"Импорт завершён! Всего импортировано {count} записей научных интересов.")
     if skipped > 0:
-        print(f"⚠️  Пропущено {skipped} записей без Author_ID.")
+        print(f"Пропущено {skipped} записей без Author_ID.")
     if duplicates > 0:
-        print(f"⚠️  Пропущено {duplicates} дубликатов (author_id уже существует).")
+        print(f"Пропущено {duplicates} дубликатов (author_id уже существует).")
 
 
 def main():
-    """Основная функция импорта"""
     db = SessionLocal()
     
     try:
-        # Пути к CSV файлам
         base_dir = Path(__file__).parent
         authors_csv = base_dir / "authors_expanded_with_ids.csv"
         interests_csv = base_dir / "authors_scientific_interests.csv"
         
-        # Проверяем наличие файлов
         if not authors_csv.exists():
-            print(f"❌ Файл {authors_csv} не найден!")
+            print(f"Файл {authors_csv} не найден!")
             return
         
         if not interests_csv.exists():
-            print(f"❌ Файл {interests_csv} не найден!")
+            print(f"Файл {interests_csv} не найден!")
             return
         
         print("=" * 60)
         print("Начинаю импорт CSV файлов в базу данных...")
         print("=" * 60)
         
-        # Импортируем авторов
-        print("\n📚 Импорт авторов и статей...")
+        print("\nИмпорт авторов и статей...")
         import_authors_csv(db, str(authors_csv))
         
-        # Импортируем научные интересы
-        print("\n🔬 Импорт научных интересов...")
+        print("\nИмпорт научных интересов...")
         import_interests_csv(db, str(interests_csv))
         
         print("\n" + "=" * 60)
-        print("✅ Импорт всех данных завершён успешно!")
+        print("Импорт всех данных завершён успешно!")
         print("=" * 60)
         
     except Exception as e:
-        print(f"❌ Ошибка при импорте: {e}")
+        print(f"Ошибка при импорте: {e}")
         db.rollback()
         raise
     finally:

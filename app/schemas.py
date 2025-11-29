@@ -12,7 +12,7 @@ class UserBase(BaseModel):
     wos_id: Optional[str] = None
     rsci_id: Optional[str] = None
     orcid_id: Optional[str] = None
-    interests_list: Optional[str] = None  # Список научных интересов (через запятую)
+    interests_list: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -25,7 +25,6 @@ class UserLogin(BaseModel):
 
 
 class UpdateInterestsRequest(BaseModel):
-    """Схема для обновления научных интересов пользователя"""
     login: str = Field(..., min_length=3, description="Login пользователя")
     interests_list: List[str] = Field(..., description="Список научных интересов")
 
@@ -43,7 +42,6 @@ class Token(BaseModel):
 
 
 class AuthorResponse(BaseModel):
-    """Ответ для незарегистрированного автора"""
     id: int
     pmid: Optional[str] = None
     title: Optional[str] = None
@@ -63,7 +61,6 @@ class AuthorResponse(BaseModel):
 
 
 class AuthorInterestResponse(BaseModel):
-    """Ответ для научных интересов автора"""
     id: int
     author_id: str
     author_name: Optional[str] = None
@@ -79,20 +76,17 @@ class AuthorInterestResponse(BaseModel):
 
 
 class SearchResponse(BaseModel):
-    """Ответ для поиска - объединяет зарегистрированных и незарегистрированных"""
     registered_users: List[UserResponse] = []
     unregistered_authors: List[AuthorResponse] = []
     author_interests: List[AuthorInterestResponse] = []
 
 
 class Metric(BaseModel):
-    """Метрика учёного"""
     label: str
     value: str
 
 
 class ScientistInfo(BaseModel):
-    """Информация об учёном"""
     username: str
     name: str
     affiliation: str
@@ -101,21 +95,18 @@ class ScientistInfo(BaseModel):
 
 
 class Analytics(BaseModel):
-    """Аналитика"""
     index: float
     average: float
     performance: str
 
 
 class TopicDistribution(BaseModel):
-    """Распределение тем"""
     label: str
     value: int
     color: str
 
 
 class Publication(BaseModel):
-    """Публикация"""
     id: int
     title: str
     journal: str
@@ -125,7 +116,6 @@ class Publication(BaseModel):
 
 
 class ScientistProfileResponse(BaseModel):
-    """Полный профиль учёного"""
     scientist: ScientistInfo
     analytics: Analytics
     topicDistribution: List[TopicDistribution]
@@ -133,14 +123,12 @@ class ScientistProfileResponse(BaseModel):
 
 
 class RecommendationRequest(BaseModel):
-    """Запрос на рекомендации по интересам"""
     interests: List[str] = Field(..., description="Список научных интересов")
     publications: Optional[List[str]] = Field(None, description="Опциональный список публикаций для анализа")
     num_recommendations: int = Field(10, ge=1, le=100, description="Количество рекомендаций")
 
 
 class AuthorRecommendation(BaseModel):
-    """Рекомендация автора"""
     author_id: str
     author_name: str
     total_score: float
@@ -153,13 +141,11 @@ class AuthorRecommendation(BaseModel):
 
 
 class RecommendationResponse(BaseModel):
-    """Ответ с рекомендациями"""
     recommendations: List[AuthorRecommendation]
     processing_time: float
 
 
 class UserPublicationBase(BaseModel):
-    """Базовая схема публикации пользователя"""
     title: str = Field(..., description="Название статьи")
     coauthors: Optional[str] = Field(None, description="Соавторы")
     citations: Optional[str] = Field(None, description="Цитирование")
@@ -169,12 +155,10 @@ class UserPublicationBase(BaseModel):
 
 
 class UserPublicationCreate(UserPublicationBase):
-    """Схема для создания публикации"""
     pass
 
 
 class UserPublicationResponse(UserPublicationBase):
-    """Схема ответа с публикацией"""
     id: int
     user_id: int
 
@@ -183,7 +167,6 @@ class UserPublicationResponse(UserPublicationBase):
 
 
 class PublicationUploadResponse(BaseModel):
-    """Ответ после загрузки публикаций"""
     message: str
     imported_count: int
     failed_count: int
@@ -191,21 +174,18 @@ class PublicationUploadResponse(BaseModel):
 
 
 class InterestNode(BaseModel):
-    """Узел интереса для knowledge graph"""
     id: int
     name: str
     scientist_count: int
 
 
 class ScientistNode(BaseModel):
-    """Узел учёного для knowledge graph"""
     id: int
     name: str
     username: str
-    interests: List[int]  # Список ID интересов
+    interests: List[int]
 
 
 class KnowledgeGraphResponse(BaseModel):
-    """Ответ для knowledge graph"""
     interests: List[InterestNode]
     scientists: List[ScientistNode]

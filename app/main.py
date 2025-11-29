@@ -24,42 +24,34 @@ from .recommender import CollaborationRecommender
 
 logger = logging.getLogger(__name__)
 
-# Глобальный экземпляр рекомендателя
 recommender = CollaborationRecommender()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Управление жизненным циклом приложения: загрузка модели при старте"""
-    # Startup: загружаем модель
     try:
         model_path = "model"
         recommender.load_model(model_path)
         logger.info("Model loaded successfully")
     except Exception as e:
         logger.error(f"Failed to load model: {e}")
-        # Не прерываем запуск, но логируем ошибку
-        # Приложение может работать без модели, но рекомендации не будут доступны
     
     yield
     
-    # Shutdown: очистка ресурсов (если нужно)
     logger.info("Application shutdown")
 
 
 models.Base.metadata.create_all(bind=engine)
 
-# CORS настройки для работы с frontend
 origins = [
     "http://localhost",
-    "http://localhost:5173",  # Vite default port
-    "http://localhost:3000",  # React default port
-    "http://localhost:8080",  # Vue default port
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:8080",
 ]
 
 app = FastAPI(title="User Auth Service", lifespan=lifespan)
 
-# Добавляем CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -124,11 +116,6 @@ def update_user_interests(
     payload: schemas.UpdateInterestsRequest,
     db: Session = Depends(get_db)
 ):
-    """
-    Обновить научные интересы пользователя по login
-    Принимает login и список интересов, сохраняет их как строку через запятую
-    """
-    # Находим пользователя по login
     user = db.query(models.User).filter(models.User.login == payload.login).first()
     
     if not user:
@@ -137,10 +124,8 @@ def update_user_interests(
             detail=f"Пользователь с login '{payload.login}' не найден"
         )
     
-    # Преобразуем список интересов в строку через запятую
     interests_string = ", ".join(payload.interests_list) if payload.interests_list else None
     
-    # Обновляем interests_list
     user.interests_list = interests_string
     
     db.commit()
@@ -155,20 +140,6 @@ async def upload_publications(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    """
-    Загрузить публикации пользователя из Excel или CSV файла
-    
-    Ожидаемые столбцы:
-    - Название статьи (обязательно)
-    - Соавторы
-    - Цитирование
-    - Журнал
-    - Год публикации
-    - Имя автора
-    
-    ⚠️ Публичный endpoint - не требует авторизации
-    """
-    # Проверяем, что пользователь существует
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(
@@ -176,7 +147,6 @@ async def upload_publications(
             detail=f"User with id {user_id} not found"
         )
     
-    # Читаем файл
     contents = await file.read()
     file_extension = file.filename.split('.')[-1].lower() if file.filename else ''
     
@@ -185,12 +155,9 @@ async def upload_publications(
     publications = []
     
     try:
-        # Определяем формат файла и читаем данные
         if file_extension in ['xlsx', 'xls']:
-            # Excel файл
             df = pd.read_excel(io.BytesIO(contents), engine='openpyxl')
         elif file_extension == 'csv':
-            # CSV файл
             df = pd.read_csv(io.BytesIO(contents), encoding='utf-8-sig')
         else:
             raise HTTPException(
@@ -198,7 +165,6 @@ async def upload_publications(
                 detail="Unsupported file format. Please upload Excel (.xlsx, .xls) or CSV (.csv) file"
             )
         
-        # Маппинг столбцов (поддерживаем разные варианты названий)
         column_mapping = {
             'название статьи': 'title',
             'название': 'title',
@@ -226,10 +192,8 @@ async def upload_publications(
             'автор': 'author_name',
         }
         
-        # Нормализуем названия столбцов (приводим к нижнему регистру)
         df.columns = df.columns.str.strip().str.lower()
         
-        # Проверяем наличие обязательного столбца "название статьи"
         title_column = None
         for col in df.columns:
             if col in ['название статьи', 'название', 'title']:
@@ -242,20 +206,14 @@ async def upload_publications(
                 detail="Required column 'Название статьи' (or 'Title') not found in file"
             )
         
-        # Удаляем старые публикации пользователя (опционально, можно закомментировать для добавления)
-        # db.query(models.UserPublication).filter(models.UserPublication.user_id == user_id).delete()
-        
-        # Обрабатываем каждую строку
         for index, row in df.iterrows():
             try:
-                # Извлекаем данные с обработкой различных названий столбцов
                 title = str(row[title_column]).strip() if pd.notna(row[title_column]) else None
                 
                 if not title or title == 'nan':
                     failed_count += 1
                     continue
                 
-                # Ищем другие столбцы
                 coauthors = None
                 citations = None
                 journal = None
@@ -275,7 +233,6 @@ async def upload_publications(
                     elif col_lower in ['имя автора', 'author_name', 'автор']:
                         author_name = str(row[col]).strip() if pd.notna(row[col]) else None
                 
-                # Создаём публикацию
                 publication = models.UserPublication(
                     user_id=user_id,
                     title=title,
@@ -296,7 +253,6 @@ async def upload_publications(
         
         db.commit()
         
-        # Получаем все публикации пользователя для ответа
         user_publications = db.query(models.UserPublication).filter(
             models.UserPublication.user_id == user_id
         ).all()
@@ -326,12 +282,6 @@ def get_user_publications(
     user_id: int,
     db: Session = Depends(get_db)
 ):
-    """
-    Получить все публикации пользователя
-    
-    ⚠️ Публичный endpoint - не требует авторизации
-    """
-    # Проверяем, что пользователь существует
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(
@@ -352,11 +302,6 @@ def delete_user_publication(
     publication_id: int,
     db: Session = Depends(get_db)
 ):
-    """
-    Удалить публикацию пользователя
-    
-    ⚠️ Публичный endpoint - не требует авторизации
-    """
     publication = db.query(models.UserPublication).filter(
         models.UserPublication.id == publication_id,
         models.UserPublication.user_id == user_id
@@ -380,12 +325,8 @@ def search_users_and_authors(
     limit: int = Query(10, ge=1, le=100, description="Максимальное количество результатов"),
     db: Session = Depends(get_db)
 ):
-    """
-    Поиск по зарегистрированным пользователям (по username) и незарегистрированным авторам (по имени)
-    """
     search_term = f"%{query.lower()}%"
     
-    # Поиск зарегистрированных пользователей по username
     registered_users = (
         db.query(models.User)
         .filter(
@@ -395,7 +336,6 @@ def search_users_and_authors(
         .all()
     )
     
-    # Поиск незарегистрированных авторов по имени
     unregistered_authors = (
         db.query(models.Author)
         .filter(
@@ -405,10 +345,8 @@ def search_users_and_authors(
         .all()
     )
     
-    # Получаем author_id из найденных авторов для поиска их интересов
     author_ids = [author.author_id for author in unregistered_authors if author.author_id]
     
-    # Поиск научных интересов для найденных авторов
     author_interests = []
     if author_ids:
         author_interests = (
@@ -430,9 +368,6 @@ def search_registered_users(
     limit: int = Query(10, ge=1, le=100, description="Максимальное количество результатов"),
     db: Session = Depends(get_db)
 ):
-    """
-    Поиск только по зарегистрированным пользователям по username
-    """
     search_term = f"%{username.lower()}%"
     
     users = (
@@ -451,9 +386,6 @@ def search_unregistered_authors(
     limit: int = Query(10, ge=1, le=100, description="Максимальное количество результатов"),
     db: Session = Depends(get_db)
 ):
-    """
-    Поиск только по незарегистрированным авторам по имени
-    """
     search_term = f"%{name.lower()}%"
     
     authors = (
@@ -471,9 +403,6 @@ def get_author_interests(
     author_id: str,
     db: Session = Depends(get_db)
 ):
-    """
-    Получить научные интересы автора по его author_id
-    """
     interest = (
         db.query(models.AuthorInterest)
         .filter(models.AuthorInterest.author_id == author_id)
@@ -494,11 +423,6 @@ def get_scientist_profile(
     author_id: str,
     db: Session = Depends(get_db)
 ):
-    """
-    Получить полный профиль учёного по author_id
-    Собирает данные из таблиц authors и author_interests
-    """
-    # Получаем научные интересы автора
     interest = (
         db.query(models.AuthorInterest)
         .filter(models.AuthorInterest.author_id == author_id)
@@ -511,18 +435,14 @@ def get_scientist_profile(
             detail=f"Автор с ID {author_id} не найден"
         )
     
-    # Получаем все публикации автора
     publications_list = (
         db.query(models.Author)
         .filter(models.Author.author_id == author_id)
         .all()
     )
     
-    # Пытаемся найти зарегистрированного пользователя по ORCID или другим ID
-    # (если author_id совпадает с каким-то ID в таблице users)
     registered_user = None
     if interest.author_id:
-        # Пробуем найти по orcid_id, google_scholar_id и т.д.
         registered_user = (
             db.query(models.User)
             .filter(
@@ -535,15 +455,11 @@ def get_scientist_profile(
             .first()
         )
     
-    # Формируем данные учёного
-    # Username: используем login зарегистрированного пользователя или генерируем из author_name
     if registered_user:
         username = registered_user.login
     elif interest.author_name:
-        # Генерируем username из author_name
         name_parts = interest.author_name.split()
         if name_parts:
-            # Берём первую часть имени и делаем username-подобным
             first_part = name_parts[0].replace(".", "").replace(",", "").strip()
             if len(name_parts) > 1:
                 last_part = name_parts[-1].replace(".", "").replace(",", "").strip()[:5]
@@ -556,12 +472,10 @@ def get_scientist_profile(
         username = "N/A"
     
     name = interest.author_name if interest.author_name else "N/A"
-    affiliation = "N/A"  # В таблицах нет поля affiliation
+    affiliation = "N/A"
     orcid = registered_user.orcid_id if registered_user and registered_user.orcid_id else "N/A"
     
-    # Метрики
     articles_count = interest.articles_count if interest.articles_count else len(publications_list) if publications_list else 0
-    # H-Index и Citations пока не вычисляем, используем "N/A"
     metrics = [
         schemas.Metric(label="H-Index", value="N/A"),
         schemas.Metric(label="Citations", value="N/A"),
@@ -576,10 +490,7 @@ def get_scientist_profile(
         metrics=metrics
     )
     
-    # Аналитика (генерируем на основе данных)
-    # Используем articles_count и interests_count для расчёта индекса
     if interest.interests_count and interest.articles_count:
-        # Простая формула: среднее между количеством интересов и статей, нормализованное
         base_value = (interest.interests_count + interest.articles_count) / 2.0
         index = round(base_value * 0.4, 1)  # Нормализуем до разумного диапазона
         average = round(base_value * 0.45, 1)
@@ -594,8 +505,6 @@ def get_scientist_profile(
         performance=performance
     )
     
-    # Распределение тем (topicDistribution)
-    # Парсим interests_list (формат: "Interest1,Interest2" или просто "Interest1")
     topic_distribution = []
     colors = ["#5BC0F8", "#7C3AED", "#F2A541", "#142850", "#38B2AC", "#EC4899", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"]
     
@@ -603,12 +512,10 @@ def get_scientist_profile(
         interests = [i.strip() for i in interest.interests_list.split(',') if i.strip()]
         
         if interests:
-            # Распределяем статьи между интересами
             base_value = articles_count // len(interests) if articles_count > 0 else 1
             remainder = articles_count % len(interests) if articles_count > 0 else 0
             
             for idx, interest_name in enumerate(interests):
-                # Распределяем остаток по первым темам
                 value = base_value + (1 if idx < remainder else 0)
                 if value == 0:
                     value = 1  # Минимум 1
@@ -622,7 +529,6 @@ def get_scientist_profile(
                     )
                 )
     
-    # Если нет интересов в списке, используем main_interest
     if not topic_distribution:
         main_interest_label = interest.main_interest if interest.main_interest else "Other"
         topic_distribution.append(
@@ -633,10 +539,8 @@ def get_scientist_profile(
             )
         )
     
-    # Публикации
     publications = []
     for idx, pub in enumerate(publications_list, start=1):
-        # Год публикации
         year = None
         if pub.publication_year:
             try:
@@ -644,17 +548,14 @@ def get_scientist_profile(
             except (ValueError, TypeError):
                 pass
         
-        # Количество цитирований - пока не извлекаем, используем None (будет "N/A" в JSON)
         citations = None
         
-        # Summary - используем citation, если есть, иначе часть title
         summary = "N/A"
         if pub.citation:
             summary = pub.citation
         elif pub.title:
             summary = pub.title
         
-        # Ограничиваем длину summary
         if summary and len(summary) > 200:
             summary = summary[:197] + "..."
         
@@ -669,8 +570,6 @@ def get_scientist_profile(
             )
         )
     
-    # Если нет публикаций, возвращаем пустой список
-    
     return schemas.ScientistProfileResponse(
         scientist=scientist_info,
         analytics=analytics,
@@ -681,9 +580,6 @@ def get_scientist_profile(
 
 @app.get("/health")
 async def health_check():
-    """
-    Проверка здоровья приложения и статуса модели
-    """
     return {
         "status": "healthy",
         "authors_count": len(recommender.df) if recommender.df is not None else 0,
@@ -693,12 +589,6 @@ async def health_check():
 
 @app.post("/recommend", response_model=schemas.RecommendationResponse)
 async def get_recommendations(request: schemas.RecommendationRequest):
-    """
-    Получить рекомендации учёных на основе научных интересов
-    
-    Принимает список интересов и опционально список публикаций,
-    возвращает топ учёных, отсортированных по релевантности
-    """
     try:
         if recommender.df is None or recommender.knn_model is None:
             raise HTTPException(
@@ -716,7 +606,6 @@ async def get_recommendations(request: schemas.RecommendationRequest):
         
         processing_time = time.time() - start_time
         
-        # Преобразуем в схемы Pydantic
         recommendation_objects = [
             schemas.AuthorRecommendation(**rec) for rec in recommendations
         ]
@@ -738,17 +627,9 @@ async def get_recommendations(request: schemas.RecommendationRequest):
 
 @app.get("/knowledge-graph", response_model=schemas.KnowledgeGraphResponse)
 def get_knowledge_graph(db: Session = Depends(get_db)):
-    """
-    Получить данные для knowledge graph: все интересы и 100 случайных учёных
-    
-    Возвращает:
-    - Все уникальные интересы с количеством учёных
-    - 100 случайно выбранных учёных (зарегистрированных и незарегистрированных) с их интересами
-    """
     try:
-        # 1. Собираем все интересы из users и подсчитываем учёных для каждого интереса
         users = db.query(models.User).filter(models.User.interests_list.isnot(None)).all()
-        interest_to_users = defaultdict(set)  # interest -> set of user IDs
+        interest_to_users = defaultdict(set)
         
         for user in users:
             if user.interests_list:
@@ -756,7 +637,6 @@ def get_knowledge_graph(db: Session = Depends(get_db)):
                 for interest in interests:
                     interest_to_users[interest].add(f"user_{user.id}")
         
-        # 2. Собираем все интересы из author_interests и подсчитываем учёных
         author_interests_list = db.query(models.AuthorInterest).filter(
             models.AuthorInterest.interests_list.isnot(None)
         ).all()
@@ -767,14 +647,11 @@ def get_knowledge_graph(db: Session = Depends(get_db)):
                 for interest in interests:
                     interest_to_users[interest].add(f"author_{ai.id}")
         
-        # 3. Создаём словарь интересов с ID и подсчитываем количество уникальных учёных
         unique_interests = sorted(interest_to_users.keys())
         interest_id_map = {interest: idx + 1 for idx, interest in enumerate(unique_interests)}
         
-        # Подсчитываем количество учёных для каждого интереса
         interest_counts = {interest: len(interest_to_users[interest]) for interest in unique_interests}
         
-        # 4. Формируем список интересов для ответа
         interests_list = [
             schemas.InterestNode(
                 id=interest_id_map[interest],
@@ -784,7 +661,6 @@ def get_knowledge_graph(db: Session = Depends(get_db)):
             for interest in unique_interests
         ]
         
-        # 5. Собираем учёных: зарегистрированные пользователи
         all_users = db.query(models.User).all()
         user_scientists = []
         for user in all_users:
@@ -795,7 +671,6 @@ def get_knowledge_graph(db: Session = Depends(get_db)):
                     if interest in interest_id_map:
                         user_interests_ids.append(interest_id_map[interest])
             
-            # Генерируем username из login или имени
             username = user.login if user.login else f"{user.first_name}{user.last_name}"
             name = f"{user.first_name} {user.last_name}"
             
@@ -807,7 +682,6 @@ def get_knowledge_graph(db: Session = Depends(get_db)):
                 'type': 'user'
             })
         
-        # 6. Собираем учёных: незарегистрированные авторы
         all_author_interests = db.query(models.AuthorInterest).all()
         author_scientists = []
         for ai in all_author_interests:
@@ -819,24 +693,21 @@ def get_knowledge_graph(db: Session = Depends(get_db)):
                         author_interests_ids.append(interest_id_map[interest])
             
             author_name = ai.author_name if ai.author_name else "Unknown"
-            # Генерируем username из имени автора
             name_parts = author_name.split()
             username = "".join([part.replace(".", "").replace(",", "")[:5] for part in name_parts[:2]]) if name_parts else author_name[:10]
             
             author_scientists.append({
-                'id': ai.id + 100000,  # Смещаем ID чтобы не конфликтовали с users
+                'id': ai.id + 100000,
                 'name': author_name,
                 'username': username,
                 'interests': author_interests_ids,
                 'type': 'author'
             })
         
-        # 7. Объединяем всех учёных и выбираем 100 случайных (или всех, если меньше 100)
         all_scientists = user_scientists + author_scientists
         random.shuffle(all_scientists)
         selected_scientists = all_scientists[:min(100, len(all_scientists))]
         
-        # 8. Формируем список учёных для ответа
         scientists_list = [
             schemas.ScientistNode(
                 id=scientist['id'],
