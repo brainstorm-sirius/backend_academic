@@ -70,22 +70,30 @@ def register_user(payload: schemas.UserCreate, db: Session = Depends(get_db)):
     if email_exists:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-    user = models.User(
-        login=payload.login,
-        email=payload.email,
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        google_scholar_id=payload.google_scholar_id,
-        scopus_id=payload.scopus_id,
-        wos_id=payload.wos_id,
-        rsci_id=payload.rsci_id,
-        orcid_id=payload.orcid_id,
-        password_hash=get_password_hash(payload.password),
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+    try:
+        user = models.User(
+            login=payload.login,
+            email=payload.email,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            google_scholar_id=payload.google_scholar_id,
+            scopus_id=payload.scopus_id,
+            wos_id=payload.wos_id,
+            rsci_id=payload.rsci_id,
+            orcid_id=payload.orcid_id,
+            password_hash=get_password_hash(payload.password),
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error registering user: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error creating user account"
+        )
 
 
 @app.post("/auth/login", response_model=schemas.Token)
@@ -125,12 +133,18 @@ def update_user_interests(
     
     interests_string = ", ".join(payload.interests_list) if payload.interests_list else None
     
-    user.interests_list = interests_string
-    
-    db.commit()
-    db.refresh(user)
-    
-    return user
+    try:
+        user.interests_list = interests_string
+        db.commit()
+        db.refresh(user)
+        return user
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating user interests: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error updating interests"
+        )
 
 
 @app.post("/users/{user_id}/publications/upload", response_model=schemas.PublicationUploadResponse)
@@ -139,6 +153,9 @@ async def upload_publications(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
+    MAX_FILE_SIZE = 10 * 1024 * 1024
+    MAX_ROWS = 10000
+    
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(
@@ -147,6 +164,12 @@ async def upload_publications(
         )
     
     contents = await file.read()
+    
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File size exceeds maximum allowed size of {MAX_FILE_SIZE / (1024*1024)}MB"
+        )
     file_extension = file.filename.split('.')[-1].lower() if file.filename else ''
     
     imported_count = 0
@@ -192,6 +215,12 @@ async def upload_publications(
         }
         
         df.columns = df.columns.str.strip().str.lower()
+        
+        if len(df) > MAX_ROWS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File contains too many rows. Maximum allowed: {MAX_ROWS}"
+            )
         
         title_column = None
         for col in df.columns:
@@ -312,10 +341,17 @@ def delete_user_publication(
             detail="Publication not found"
         )
     
-    db.delete(publication)
-    db.commit()
-    
-    return {"message": "Publication deleted successfully"}
+    try:
+        db.delete(publication)
+        db.commit()
+        return {"message": "Publication deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting publication: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error deleting publication"
+        )
 
 
 @app.get("/search", response_model=schemas.SearchResponse)
@@ -686,7 +722,7 @@ def get_knowledge_graph(
             if current_user_interests and user_interest_list:
                 common_interests = set(current_user_interests) & set(user_interest_list)
                 total_interests = set(current_user_interests) | set(user_interest_list)
-                if total_interests:
+                if total_interests and len(total_interests) > 0:
                     similarity_score = len(common_interests) / len(total_interests)
             
             user_scientists_with_scores.append({
@@ -709,7 +745,7 @@ def get_knowledge_graph(
                 recommended_author_ids = {rec['author_id'] for rec in ml_recommendations}
                 recommendation_scores = {rec['author_id']: rec['total_score'] for rec in ml_recommendations}
             except Exception as e:
-                logger.warning(f"ML recommendation failed, using fallback: {e}")
+                logger.warning(f"Recommendation failed, using fallback: {e}")
                 recommended_author_ids = set()
                 recommendation_scores = {}
         else:
@@ -734,7 +770,7 @@ def get_knowledge_graph(
             if current_user_interests and author_interest_list:
                 common_interests = set(current_user_interests) & set(author_interest_list)
                 total_interests = set(current_user_interests) | set(author_interest_list)
-                if total_interests:
+                if total_interests and len(total_interests) > 0:
                     similarity_score = len(common_interests) / len(total_interests)
             
             if ai.author_id in recommended_author_ids:

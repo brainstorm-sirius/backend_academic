@@ -14,7 +14,7 @@ python-jose[cryptography]>=3.3.0,<4.0.0
 pydantic>=2.9.0,<3.0.0
 email-validator>=2.2.0,<3.0.0
 
-# Data Science & ML
+# Data Science
 pandas>=2.0.0,<3.0.0
 numpy>=1.26.0,<2.0.0
 scikit-learn>=1.4.0,<2.0.0
