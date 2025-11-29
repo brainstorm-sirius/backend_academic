@@ -1,117 +1,113 @@
 # Academic Collaboration Platform Backend
 
-Современный REST API для научной социальной сети, позволяющий учёным находить коллаборации, управлять публикациями и получать персонализированные рекомендации на основе научных интересов.
+A modern REST API for a scientific social network that enables researchers to find collaborations, manage publications, and receive personalized recommendations based on scientific interests.
 
-## 🚀 Основные возможности
+## Key Features
 
-- **🔐 Аутентификация и авторизация** - JWT токены, безопасное хеширование паролей
-- **👤 Управление профилями** - Регистрация учёных с поддержкой ID из научных баз (ORCID, Google Scholar, Scopus и др.)
-- **📚 Научные интересы** - Гибкая система управления научными интересами пользователей
-- **📄 Публикации** - Загрузка и управление публикациями из Excel/CSV файлов
-- **🔍 Поиск** - Единый поиск по зарегистрированным пользователям и незарегистрированным авторам
-- **🎯 Рекомендации** - Персонализированные рекомендации учёных на основе совпадения интересов
-- **📊 Профили авторов** - Детальные профили с публикациями, метриками и аналитикой
-- **🕸️ Knowledge Graph** - Визуализация связей между интересами и учёными
-- **📥 Импорт данных** - Массовый импорт данных о авторах из CSV файлов
+- **Authentication & Authorization**: JWT tokens, secure password hashing.
+- **Profile Management**: Registration for researchers with support for IDs from scientific databases (ORCID, Google Scholar, Scopus, etc.).
+- **Scientific Interests**: Flexible system for managing user research interests.
+- **Publications**: Upload and manage publications via Excel/CSV files.
+- **Search**: Unified search across registered users and unregistered authors.
+- **Recommendations**: Personalized researcher recommendations based on interest matching.
+- **Author Profiles**: Detailed profiles with publications, metrics, and analytics.
+- **Knowledge Graph**: Visualization of connections between interests and researchers.
+- **Data Import**: Bulk import of author data from CSV files.
 
-## 🛠 Стек технологий
+## Tech Stack
 
 ### Backend
-- **FastAPI** 0.115+ - Современный асинхронный веб-фреймворк
-- **Pydantic v2** - Валидация данных и сериализация
-- **SQLAlchemy 2.x** - ORM для работы с базой данных
-- **Uvicorn** - ASGI сервер
+- **FastAPI** 0.115+: Modern asynchronous web framework.
+- **Pydantic v2**: Data validation and serialization.
+- **SQLAlchemy 2.x**: ORM for database interaction.
+- **Uvicorn**: ASGI server.
 
-### База данных
-- **SQLite** (по умолчанию) - Легковесная БД для разработки
-- Поддержка PostgreSQL через переменную окружения
+### Database
+- **SQLite** (default): Lightweight DB for development.
+- PostgreSQL support via environment variables.
 
-### Безопасность
-- **JWT** (`python-jose`) - JSON Web Tokens для аутентификации
-- **bcrypt_sha256** (`passlib`) - Безопасное хеширование паролей
-- **CORS** - Настроен для работы с frontend
+### Security
+- **JWT** (`python-jose`): JSON Web Tokens for authentication.
+- **bcrypt_sha256** (`passlib`): Secure password hashing.
+- **CORS**: Configured for frontend interaction.
 
-### Рекомендации
-- **scikit-learn** - KNN алгоритм для поиска похожих учёных
-- **TF-IDF** - Векторизация текстовых данных
-- **pandas, numpy, scipy** - Обработка данных
+### Recommendations
+- **scikit-learn**: KNN algorithm for finding similar researchers.
+- **TF-IDF**: Text data vectorization.
+- **pandas, numpy, scipy**: Data processing.
 
-### Файлы
-- **openpyxl** - Работа с Excel файлами
-- **pandas** - Обработка CSV файлов
+### Files
+- **openpyxl**: Excel file processing.
+- **pandas**: CSV file processing.
 
-### Развёртывание
-- **Docker** + **Docker Compose** - Контейнеризация
-- **Health checks** - Мониторинг состояния приложения
+### Deployment
+- **Docker** + **Docker Compose**: Containerization.
+- **Health checks**: Application status monitoring.
 
-## 📋 Требования
+## Requirements
 
 - Python 3.11+
-- Docker 20.10+ (опционально, для контейнеризации)
-- SQLite 3 (встроен в Python) или PostgreSQL (для production)
+- Docker 20.10+ (optional, for containerization)
+- SQLite 3 (built into Python) or PostgreSQL (for production)
 
-## ⚡ Быстрый старт
+## Quick Start
 
-### Вариант 1: Docker (рекомендуется)
+### Option 1: Docker (Recommended)
 
 ```bash
-# Клонировать репозиторий
+# Clone the repository
 git clone <repository-url>
 cd backend_academic
 
-# Создать .env файл (опционально, но рекомендуется)
+# Create .env file (optional but recommended)
 echo "SECRET_KEY=$(openssl rand -hex 32)" > .env
 
-# Запустить приложение
+# Start the application
 docker-compose up -d
 
-# Проверить статус
+# Check status
 docker-compose ps
 
-# Просмотреть логи
+# View logs
 docker-compose logs -f
 ```
 
-Приложение будет доступно по адресу: `http://localhost:8000`
+The application will be available at: `http://localhost:8000`
 
-### Вариант 2: Локальная установка
+### Option 2: Local Installation
 
 ```bash
-# Клонировать репозиторий
+# Clone the repository
 git clone <repository-url>
 cd backend_academic
 
-# Создать виртуальное окружение
+# Create virtual environment
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# Установить зависимости
+# Install dependencies
 pip install -r requirements.txt
 
-# Установить переменные окружения (опционально)
+# Set environment variables (optional)
 export SECRET_KEY="your-secret-key"
 export DATABASE_URL="sqlite:///./users.db"
 
-# Запустить приложение
+# Start the application
 uvicorn app.main:app --reload
 ```
 
-Приложение будет доступно по адресу: `http://127.0.0.1:8000`
+The application will be available at: `http://127.0.0.1:8000`
 
-## 📚 Документация
+## Documentation
 
-- **API документация (Swagger)**: `http://localhost:8000/docs`
-- **Альтернативная документация (ReDoc)**: `http://localhost:8000/redoc`
+- **API Documentation (Swagger)**: `http://localhost:8000/docs`
+- **Alternative Documentation (ReDoc)**: `http://localhost:8000/redoc`
 - **Health check**: `http://localhost:8000/health`
 
-### Дополнительная документация
 
-- **[DOCKER.md](DOCKER.md)** - Подробная инструкция по запуску через Docker
-- **[SECURITY.md](SECURITY.md)** - Анализ безопасности и устойчивости кода
+## System Architecture
 
-## 🏗 Архитектура системы
-
-Приложение построено по принципу многослойной архитектуры:
+The application is built using a multi-layer architecture:
 
 ```
 ┌─────────────────────────────────────────┐
@@ -132,40 +128,22 @@ uvicorn app.main:app --reload
 │  - Models (app/models.py)               │
 │  - Database (app/database.py)           │
 ├─────────────────────────────────────────┤
-│  Data Validation Layer                   │
+│  Data Validation Layer                  │
 │  - Schemas (app/schemas.py)             │
 └─────────────────────────────────────────┘
 ```
 
-### Компоненты системы
+### System Components
 
-1. **API Layer** (`app/main.py`)
-   - Обработка HTTP запросов
-   - Валидация входных данных через Pydantic
-   - Маршрутизация запросов
+1.  **API Layer** (`app/main.py`): Handles HTTP requests, validates input via Pydantic, and routes requests.
+2.  **Authentication Service** (`app/auth.py`): Handles password hashing (bcrypt), JWT generation/validation, and dependency injection for current users.
+3.  **Recommender Service** (`app/recommender.py`): Manages the KNN model loading, TF-IDF vectorization, and similarity searches.
+4.  **Database Layer** (`app/database.py`, `app/models.py`): Manages DB connections, ORM models, and automatic table creation.
+5.  **Validation Layer** (`app/schemas.py`): Pydantic schemas for input validation and response serialization.
 
-2. **Authentication Service** (`app/auth.py`)
-   - Хеширование паролей (bcrypt)
-   - Генерация и валидация JWT токенов
-   - Dependency Injection для получения текущего пользователя
+## Database Structure
 
-3. **Recommender Service** (`app/recommender.py`)
-   - Загрузка обученной модели (KNN)
-   - Векторизация интересов (TF-IDF)
-   - Поиск похожих учёных
-
-4. **Database Layer** (`app/database.py`, `app/models.py`)
-   - Настройка подключения к БД
-   - ORM модели для работы с данными
-   - Автоматическое создание таблиц
-
-5. **Validation Layer** (`app/schemas.py`)
-   - Pydantic схемы для валидации входных данных
-   - Схемы для сериализации ответов
-
-## 🗄 Структура базы данных
-
-### Диаграмма связей
+### Entity Relationship Diagram
 
 ```
 ┌─────────────┐
@@ -202,7 +180,7 @@ uvicorn app.main:app --reload
 │ title       │  │
 │ journal     │  │
 └─────────────┘  │
-                 │ (логическая связь через author_id)
+                 │ (logical link via author_id)
                  │
                  ▼
 ┌──────────────────┐
@@ -219,63 +197,63 @@ uvicorn app.main:app --reload
 └──────────────────┘
 ```
 
-### Основные таблицы
+### Main Tables
 
-#### `users` - Зарегистрированные пользователи
-- Хранит данные зарегистрированных учёных
-- Поддержка ID из научных баз (ORCID, Google Scholar, Scopus, WOS, РИНЦ)
-- Связь один-ко-многим с `user_publications`
+#### `users` - Registered Users
+- Stores data for registered researchers.
+- Supports IDs from scientific databases (ORCID, Google Scholar, Scopus, WOS, RSCI).
+- One-to-many relationship with `user_publications`.
 
-#### `user_publications` - Публикации пользователей
-- Хранит публикации зарегистрированных пользователей
-- Загружаются из Excel/CSV файлов
-- Связь многие-к-одному с `users`
+#### `user_publications` - User Publications
+- Stores publications of registered users.
+- Uploaded via Excel/CSV files.
+- Many-to-one relationship with `users`.
 
-#### `authors` - Незарегистрированные авторы
-- Хранит информацию о незарегистрированных авторах и их публикациях
-- Импортируется из CSV файлов
-- Логическая связь с `author_interests` через `author_id`
+#### `authors` - Unregistered Authors
+- Stores information about unregistered authors and their publications.
+- Imported from CSV files.
+- Logical link to `author_interests` via `author_id`.
 
-#### `author_interests` - Научные интересы авторов
-- Хранит научные интересы незарегистрированных авторов
-- Используется для рекомендаций и поиска
-- Логическая связь с `authors` через `author_id`
+#### `author_interests` - Author Scientific Interests
+- Stores scientific interests of unregistered authors.
+- Used for recommendations and search.
+- Logical link to `authors` via `author_id`.
 
-## 🔧 Переменные окружения
+## Environment Variables
 
-| Переменная | Значение по умолчанию | Назначение |
+| Variable | Default Value | Purpose |
 |-----------|-----------------------|-----------|
-| `DATABASE_URL` | `sqlite:///./users.db` | Строка подключения к БД (SQLAlchemy) |
-| `SECRET_KEY` | `change-me` | Ключ подписи JWT (⚠️ **обязательно замените в production**) |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Время жизни токена в минутах |
+| `DATABASE_URL` | `sqlite:///./users.db` | Connection string (SQLAlchemy) |
+| `SECRET_KEY` | `change-me` | JWT signing key (⚠️ **must change in production**) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Token validity duration in minutes |
 
-**Важно**: В production обязательно установите сильный `SECRET_KEY`:
+**Important**: In production, set a strong `SECRET_KEY`:
 ```bash
 export SECRET_KEY=$(openssl rand -hex 32)
 ```
 
-## 📡 API Endpoints
+## API Endpoints
 
-### Аутентификация
+### Authentication
 
-#### `POST /auth/register` - Регистрация
-Создаёт нового пользователя в системе.
+#### `POST /auth/register` - Register
+Creates a new user in the system.
 
-**Параметры**:
-- `login` (string, min 3) - Уникальный логин
-- `email` (email) - Email адрес
-- `first_name`, `last_name` (string) - Имя и фамилия
-- `password` (string, min 8) - Пароль
-- `google_scholar_id`, `scopus_id`, `wos_id`, `rsci_id`, `orcid_id` (optional) - ID в научных базах
+**Parameters**:
+- `login` (string, min 3): Unique login.
+- `email` (email): Email address.
+- `first_name`, `last_name` (string): Name and surname.
+- `password` (string, min 8): Password.
+- `google_scholar_id`, `scopus_id`, `wos_id`, `rsci_id`, `orcid_id` (optional): Scientific database IDs.
 
-#### `POST /auth/login` - Вход
-Возвращает JWT токен для авторизованных запросов.
+#### `POST /auth/login` - Login
+Returns a JWT token for authorized requests.
 
-**Параметры**:
-- `login_or_email` (string) - Логин или email
-- `password` (string) - Пароль
+**Parameters**:
+- `login_or_email` (string): Login or email.
+- `password` (string): Password.
 
-**Ответ**:
+**Response**:
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -283,92 +261,92 @@ export SECRET_KEY=$(openssl rand -hex 32)
 }
 ```
 
-### Пользователи
+### Users
 
-#### `GET /users/me` - Текущий пользователь
-Требует авторизации. Возвращает данные текущего пользователя.
+#### `GET /users/me` - Current User
+Requires authorization. Returns current user data.
 
-#### `PUT /users/interests` - Обновить интересы
-Обновляет список научных интересов пользователя.
+#### `PUT /users/interests` - Update Interests
+Updates the user's list of scientific interests.
 
-#### `POST /users/{user_id}/publications/upload` - Загрузить публикации
-Загружает публикации из Excel или CSV файла.
+#### `POST /users/{user_id}/publications/upload` - Upload Publications
+Uploads publications from an Excel or CSV file.
 
-**Поддерживаемые форматы**: CSV (.csv), Excel (.xlsx, .xls)
+**Supported Formats**: CSV (.csv), Excel (.xlsx, .xls)
 
-**Ограничения**:
-- Максимальный размер файла: 10MB
-- Максимальное количество строк: 10000
+**Limits**:
+- Max file size: 10MB
+- Max rows: 10,000
 
-#### `GET /users/{user_id}/publications` - Получить публикации
-Возвращает все публикации указанного пользователя.
+#### `GET /users/{user_id}/publications` - Get Publications
+Returns all publications for the specified user.
 
-#### `DELETE /users/{user_id}/publications/{publication_id}` - Удалить публикацию
-Удаляет публикацию пользователя.
+#### `DELETE /users/{user_id}/publications/{publication_id}` - Delete Publication
+Deletes a user's publication.
 
-### Поиск
+### Search
 
-#### `GET /search` - Объединённый поиск
-Ищет по зарегистрированным пользователям (по username) и незарегистрированным авторам (по имени).
+#### `GET /search` - Unified Search
+Searches across registered users (by username) and unregistered authors (by name).
 
-**Параметры**:
-- `query` (string, min 2) - Поисковый запрос
-- `limit` (int, 1-100, default 10) - Максимальное количество результатов
+**Parameters**:
+- `query` (string, min 2): Search query.
+- `limit` (int, 1-100, default 10): Max results.
 
-#### `GET /search/users` - Поиск пользователей
-Поиск только по зарегистрированным пользователям.
+#### `GET /search/users` - Search Users
+Search strictly within registered users.
 
-#### `GET /search/authors` - Поиск авторов
-Поиск только по незарегистрированным авторам.
+#### `GET /search/authors` - Search Authors
+Search strictly within unregistered authors.
 
-### Авторы
+### Authors
 
-#### `GET /authors/{author_id}/interests` - Научные интересы автора
-Возвращает научные интересы автора по его `author_id`.
+#### `GET /authors/{author_id}/interests` - Author Interests
+Returns scientific interests for an author via `author_id`.
 
-#### `GET /authors/{author_id}/profile` - Полный профиль автора
-Возвращает полный профиль автора с публикациями и аналитикой.
+#### `GET /authors/{author_id}/profile` - Full Author Profile
+Returns a full author profile with publications and analytics.
 
-**Ответ включает**:
-- Информацию об учёном (имя, ORCID, метрики)
-- Аналитику (индекс, среднее, производительность)
-- Распределение тем (topicDistribution)
-- Список публикаций
+**Response Includes**:
+- Scientist info (name, ORCID, metrics).
+- Analytics (h-index, average, productivity).
+- Topic distribution.
+- Publication list.
 
-### Рекомендации
+### Recommendations
 
-#### `POST /recommend` - Получить рекомендации
-Использует обученную модель (KNN) для поиска похожих учёных.
+#### `POST /recommend` - Get Recommendations
+Uses the trained KNN model to find similar researchers.
 
-**Параметры**:
-- `interests` (array of strings) - Список научных интересов
-- `publications` (array of strings, optional) - Список публикаций для анализа
-- `num_recommendations` (int, 1-100, default 10) - Количество рекомендаций
+**Parameters**:
+- `interests` (array of strings): List of scientific interests.
+- `publications` (array of strings, optional): List of publications for analysis.
+- `num_recommendations` (int, 1-100, default 10): Number of recommendations.
 
-**Алгоритм ранжирования**:
-- Similarity (60%) - похожесть интересов
-- Productivity (25%) - количество статей
-- Diversity (15%) - разнообразие интересов
+**Ranking Algorithm**:
+- Similarity (60%): Interest matching.
+- Productivity (25%): Article count.
+- Diversity (15%): Variety of interests.
 
 ### Knowledge Graph
 
-#### `GET /knowledge-graph` - Данные для графа знаний
-**Требует авторизации**: Да (Bearer token)
+#### `GET /knowledge-graph` - Graph Data
+**Requires Authorization**: Yes (Bearer token)
 
-Возвращает все уникальные интересы и топ-100 наиболее релевантных учёных для текущего пользователя на основе их научных интересов.
+Returns all unique interests and the top 100 most relevant scientists for the current user based on their scientific interests.
 
-**Логика работы**:
-1. Собирает все уникальные интересы из `users` и `author_interests`
-2. Подсчитывает количество учёных для каждого интереса
-3. Выбирает топ-100 наиболее релевантных учёных (сортировка по совпадению интересов)
-4. Связывает учёных с интересами через ID
+**Logic**:
+1. Collects all unique interests from `users` and `author_interests`.
+2. Counts scientists for each interest.
+3. Selects top 100 relevant scientists (sorted by interest match).
+4. Links scientists to interests via IDs.
 
-### Система
+### System
 
-#### `GET /health` - Проверка здоровья
-Возвращает статус приложения и модели.
+#### `GET /health` - Health Check
+Returns application and model status.
 
-**Ответ**:
+**Response**:
 ```json
 {
   "status": "healthy",
@@ -377,127 +355,126 @@ export SECRET_KEY=$(openssl rand -hex 32)
 }
 ```
 
-## 🤖 Модель рекомендаций
+## Recommendation Model
 
-Приложение использует обученную модель для рекомендаций учёных:
+The application uses a trained model for recommending scientists:
 
-**Алгоритм**: K-Nearest Neighbors (KNN) с косинусным расстоянием  
-**Векторизация**: TF-IDF (Term Frequency-Inverse Document Frequency)  
-**Метрики ранжирования**:
-- Similarity (60%) - похожесть научных интересов
-- Productivity (25%) - количество публикаций
-- Diversity (15%) - разнообразие интересов
+**Algorithm**: K-Nearest Neighbors (KNN) with cosine distance.
+**Vectorization**: TF-IDF (Term Frequency-Inverse Document Frequency).
+**Ranking Metrics**:
+- Similarity (60%)
+- Productivity (25%)
+- Diversity (15%)
 
-**Структура модели**:
-- `authors_data.pkl` - Данные об авторах (DataFrame)
-- `vectorizer.pkl` - TF-IDF векторизатор
-- `author_vectors.npz` - Векторизованные профили авторов
-- `knn_model.pkl` - Обученная KNN модель
+**Model Structure**:
+- `authors_data.pkl`: Author data (DataFrame).
+- `vectorizer.pkl`: TF-IDF vectorizer.
+- `author_vectors.npz`: Vectorized author profiles.
+- `knn_model.pkl`: Trained KNN model.
 
-Модель загружается автоматически при старте приложения из папки `model/`.
+The model loads automatically from the `model/` directory at startup.
 
-**Важно**: 
-- Папка `model/` **не включена в git** из-за размера файлов (~83MB)
-- Получите готовую модель у команды или обучите самостоятельно
+**Note**:
+- The `model/` folder is **excluded from git** due to file size (~83MB).
+- Obtain the pre-trained model from the team or train it yourself.
 
-### Обучение модели
+### Training the Model
 
-Для обучения новой модели используйте `train_model.py`:
+To train a new model, use `train_model.py`:
 
 ```bash
-# Убедитесь, что файл authors_scientific_interests.csv находится в корне проекта
+# Ensure authors_scientific_interests.csv is in the project root
 python train_model.py
 ```
 
-## 📥 Импорт данных
+## Data Import
 
-Для импорта данных о незарегистрированных авторах:
+To import data regarding unregistered authors:
 
 ```bash
 python import_csv.py
 ```
 
-Скрипт импортирует:
-- `authors_expanded_with_ids.csv` → таблица `authors`
-- `authors_scientific_interests.csv` → таблица `author_interests`
+The script imports:
+- `authors_expanded_with_ids.csv` → `authors` table.
+- `authors_scientific_interests.csv` → `author_interests` table.
 
-**Важно**: 
-- CSV файлы **не включены в git** из-за их размера (~127MB)
-- Получите CSV файлы у команды или создайте их самостоятельно
-- Убедитесь, что CSV файлы находятся в корне проекта перед импортом
+**Note**:
+- CSV files are **excluded from git** due to size (~127MB).
+- Obtain CSV files from the team or generate them yourself.
+- Ensure CSV files are in the project root before importing.
 
-## 🔒 Безопасность
+## Security
 
-### Реализованные меры
+### Implemented Measures
 
-- ✅ **SQL Injection** - Защищено через SQLAlchemy ORM
-- ✅ **Пароли** - Хеширование через bcrypt_sha256
-- ✅ **JWT токены** - Безопасная аутентификация
-- ✅ **Валидация данных** - Pydantic схемы
-- ✅ **Ограничения файлов** - Максимум 10MB, 10000 строк
-- ✅ **Обработка ошибок** - Try-except блоки с rollback
+- **SQL Injection**: Protected via SQLAlchemy ORM.
+- **Passwords**: Hashed using bcrypt_sha256.
+- **JWT Tokens**: Secure authentication.
+- **Data Validation**: Pydantic schemas.
+- **File Limits**: Max 10MB, 10,000 rows.
+- **Error Handling**: Try-except blocks with rollback.
 
-### Рекомендации для production
+### Production Recommendations
 
-- ⚠️ **SECRET_KEY** - Обязательно установите сильный ключ
-- ⚠️ **HTTPS** - Используйте HTTPS в production
-- ⚠️ **CORS** - Ограничьте origins для конкретных доменов
-- ⚠️ **Rate Limiting** - Рассмотрите добавление rate limiting
-- ⚠️ **Мониторинг** - Настройте логирование и мониторинг
+- **SECRET_KEY**: Use a strong key.
+- **HTTPS**: Mandatory for production.
+- **CORS**: Restrict origins to specific domains.
+- **Rate Limiting**: Consider adding rate limiting.
+- **Monitoring**: Setup logging and monitoring.
 
-Подробнее см. [SECURITY.md](SECURITY.md)
 
-## 📁 Структура проекта
+## Project Structure
 
 ```
 backend_academic/
-├── app/                    # Основной код приложения
+├── app/                    # Main application code
 │   ├── __init__.py
-│   ├── main.py            # FastAPI приложение и endpoints
-│   ├── models.py          # SQLAlchemy модели (таблицы БД)
-│   ├── schemas.py         # Pydantic схемы (валидация данных)
-│   ├── auth.py           # Аутентификация и JWT
-│   ├── database.py       # Настройка подключения к БД
-│   └── recommender.py    # Сервис рекомендаций (KNN)
-├── model/                 # Обученная модель (не в git)
+│   ├── main.py             # FastAPI app and endpoints
+│   ├── models.py           # SQLAlchemy models (DB tables)
+│   ├── schemas.py          # Pydantic schemas (validation)
+│   ├── auth.py             # Auth and JWT
+│   ├── database.py         # DB connection setup
+│   └── recommender.py      # Recommendation service (KNN)
+├── model/                  # Trained model (not in git)
 │   ├── authors_data.pkl
 │   ├── vectorizer.pkl
 │   ├── author_vectors.npz
 │   └── knn_model.pkl
-├── import_csv.py         # Скрипт импорта CSV данных
-├── train_model.py        # Скрипт обучения модели
-├── requirements.txt      # Зависимости Python
-├── Dockerfile           # Docker конфигурация
-├── docker-compose.yml   # Docker Compose конфигурация
-├── .dockerignore        # Исключения для Docker
-├── .gitignore          # Исключения для Git
-└── README.md           # Документация
+├── import_csv.py           # CSV import script
+├── train_model.py          # Model training script
+├── requirements.txt        # Python dependencies
+├── Dockerfile              # Docker configuration
+├── docker-compose.yml      # Docker Compose configuration
+├── .dockerignore           # Docker exclusions
+├── .gitignore              # Git exclusions
+└── README.md               # Documentation
 ```
 
-## 🧪 Тестирование
+## Testing
 
-### Интерактивная документация
+### Interactive Documentation
 
-- **Swagger UI**: `http://localhost:8000/docs` - Интерактивная документация API
-- **ReDoc**: `http://localhost:8000/redoc` - Альтернативная документация
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
 
-### Примеры запросов
+### Request Examples
 
-#### Регистрация пользователя
+#### Register User
 ```bash
 curl -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "login": "scientist123",
     "email": "scientist@example.com",
-    "first_name": "Иван",
-    "last_name": "Иванов",
+    "first_name": "John",
+    "last_name": "Doe",
     "password": "SecurePass123",
     "orcid_id": "0000-0000-0000-0000"
   }'
 ```
 
-#### Вход
+#### Login
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
@@ -507,7 +484,7 @@ curl -X POST http://localhost:8000/auth/login \
   }'
 ```
 
-#### Получить рекомендации
+#### Get Recommendations
 ```bash
 curl -X POST http://localhost:8000/recommend \
   -H "Content-Type: application/json" \
@@ -517,85 +494,84 @@ curl -X POST http://localhost:8000/recommend \
   }'
 ```
 
-## 🐳 Docker
+## Docker
 
-Подробная инструкция по работе с Docker доступна в [DOCKER.md](DOCKER.md)
 
-### Быстрые команды
+
+### Quick Commands
 
 ```bash
-# Запустить
+# Start
 docker-compose up -d
 
-# Остановить
+# Stop
 docker-compose down
 
-# Просмотр логов
+# View logs
 docker-compose logs -f
 
-# Перезапустить
+# Restart
 docker-compose restart
 ```
 
-## 📝 Работа с базой данных
+## Database Management
 
-### SQLite (по умолчанию)
+### SQLite (Default)
 
 ```bash
-# Подключение к БД
+# Connect to DB
 sqlite3 users.db
 
-# Просмотр таблиц
+# View tables
 .tables
 
-# Просмотр пользователей
+# View users
 SELECT * FROM users LIMIT 10;
 
-# Просмотр публикаций
+# View publications
 SELECT * FROM user_publications LIMIT 10;
 
-# Выход
+# Exit
 .quit
 ```
 
-### Автоматическое создание таблиц
+### Automatic Table Creation
 
-Все таблицы создаются автоматически при первом запуске приложения через `models.Base.metadata.create_all(bind=engine)` в `app/main.py`.
+All tables are automatically created on the first application run via `models.Base.metadata.create_all(bind=engine)` in `app/main.py`.
 
-## 🔄 Обновление проекта
+## Updates
 
 ```bash
-# Получить последние изменения
+# Pull latest changes
 git pull
 
-# Обновить зависимости
+# Update dependencies
 pip install -r requirements.txt --upgrade
 
-# Перезапустить приложение
-docker-compose restart  # или uvicorn app.main:app --reload
+# Restart application
+docker-compose restart  # or uvicorn app.main:app --reload
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
-### Проблема: Модель не загружается
+### Issue: Model fails to load
 
-**Решение**: Убедитесь, что папка `model/` содержит все необходимые файлы:
+**Solution**: Ensure the `model/` folder contains all required files:
 - `authors_data.pkl`
 - `vectorizer.pkl`
 - `author_vectors.npz`
 - `knn_model.pkl`
 
-### Проблема: Ошибка при импорте CSV
+### Issue: Error during CSV import
 
-**Решение**: 
-- Проверьте, что CSV файлы находятся в корне проекта
-- Убедитесь, что файлы имеют правильную кодировку (UTF-8 с BOM)
-- Проверьте наличие обязательных столбцов
+**Solution**:
+- Verify CSV files are in the project root.
+- Ensure files have correct encoding (UTF-8 with BOM).
+- Check for required columns.
 
-### Проблема: База данных заблокирована
+### Issue: Database is locked
 
-**Решение**: 
-- Закройте все подключения к БД
-- Перезапустите приложение
-- Для SQLite: убедитесь, что нет других процессов, использующих БД
-
+**Solution**:
+- Close all DB connections.
+- Restart the application.
+- For SQLite: Ensure no other processes are using the DB.
