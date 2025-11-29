@@ -188,3 +188,24 @@ class PublicationUploadResponse(BaseModel):
     imported_count: int
     failed_count: int
     publications: List[UserPublicationResponse]
+
+
+class InterestNode(BaseModel):
+    """Узел интереса для knowledge graph"""
+    id: int
+    name: str
+    scientist_count: int
+
+
+class ScientistNode(BaseModel):
+    """Узел учёного для knowledge graph"""
+    id: int
+    name: str
+    username: str
+    interests: List[int]  # Список ID интересов
+
+
+class KnowledgeGraphResponse(BaseModel):
+    """Ответ для knowledge graph"""
+    interests: List[InterestNode]
+    scientists: List[ScientistNode]

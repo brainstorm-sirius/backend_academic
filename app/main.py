@@ -1,6 +1,8 @@
 import time
 import logging
 import io
+import random
+from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, status, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -731,4 +733,128 @@ async def get_recommendations(request: schemas.RecommendationRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generating recommendations: {str(e)}"
+        )
+
+
+@app.get("/knowledge-graph", response_model=schemas.KnowledgeGraphResponse)
+def get_knowledge_graph(db: Session = Depends(get_db)):
+    """
+    Получить данные для knowledge graph: все интересы и 100 случайных учёных
+    
+    Возвращает:
+    - Все уникальные интересы с количеством учёных
+    - 100 случайно выбранных учёных (зарегистрированных и незарегистрированных) с их интересами
+    """
+    try:
+        # 1. Собираем все интересы из users и подсчитываем учёных для каждого интереса
+        users = db.query(models.User).filter(models.User.interests_list.isnot(None)).all()
+        interest_to_users = defaultdict(set)  # interest -> set of user IDs
+        
+        for user in users:
+            if user.interests_list:
+                interests = [i.strip() for i in user.interests_list.split(',') if i.strip()]
+                for interest in interests:
+                    interest_to_users[interest].add(f"user_{user.id}")
+        
+        # 2. Собираем все интересы из author_interests и подсчитываем учёных
+        author_interests_list = db.query(models.AuthorInterest).filter(
+            models.AuthorInterest.interests_list.isnot(None)
+        ).all()
+        
+        for ai in author_interests_list:
+            if ai.interests_list:
+                interests = [i.strip() for i in ai.interests_list.split(',') if i.strip()]
+                for interest in interests:
+                    interest_to_users[interest].add(f"author_{ai.id}")
+        
+        # 3. Создаём словарь интересов с ID и подсчитываем количество уникальных учёных
+        unique_interests = sorted(interest_to_users.keys())
+        interest_id_map = {interest: idx + 1 for idx, interest in enumerate(unique_interests)}
+        
+        # Подсчитываем количество учёных для каждого интереса
+        interest_counts = {interest: len(interest_to_users[interest]) for interest in unique_interests}
+        
+        # 4. Формируем список интересов для ответа
+        interests_list = [
+            schemas.InterestNode(
+                id=interest_id_map[interest],
+                name=interest,
+                scientist_count=interest_counts[interest]
+            )
+            for interest in unique_interests
+        ]
+        
+        # 5. Собираем учёных: зарегистрированные пользователи
+        all_users = db.query(models.User).all()
+        user_scientists = []
+        for user in all_users:
+            user_interests_ids = []
+            if user.interests_list:
+                user_interest_list = [i.strip() for i in user.interests_list.split(',') if i.strip()]
+                for interest in user_interest_list:
+                    if interest in interest_id_map:
+                        user_interests_ids.append(interest_id_map[interest])
+            
+            # Генерируем username из login или имени
+            username = user.login if user.login else f"{user.first_name}{user.last_name}"
+            name = f"{user.first_name} {user.last_name}"
+            
+            user_scientists.append({
+                'id': user.id,
+                'name': name,
+                'username': username,
+                'interests': user_interests_ids,
+                'type': 'user'
+            })
+        
+        # 6. Собираем учёных: незарегистрированные авторы
+        all_author_interests = db.query(models.AuthorInterest).all()
+        author_scientists = []
+        for ai in all_author_interests:
+            author_interests_ids = []
+            if ai.interests_list:
+                author_interest_list = [i.strip() for i in ai.interests_list.split(',') if i.strip()]
+                for interest in author_interest_list:
+                    if interest in interest_id_map:
+                        author_interests_ids.append(interest_id_map[interest])
+            
+            author_name = ai.author_name if ai.author_name else "Unknown"
+            # Генерируем username из имени автора
+            name_parts = author_name.split()
+            username = "".join([part.replace(".", "").replace(",", "")[:5] for part in name_parts[:2]]) if name_parts else author_name[:10]
+            
+            author_scientists.append({
+                'id': ai.id + 100000,  # Смещаем ID чтобы не конфликтовали с users
+                'name': author_name,
+                'username': username,
+                'interests': author_interests_ids,
+                'type': 'author'
+            })
+        
+        # 7. Объединяем всех учёных и выбираем 100 случайных (или всех, если меньше 100)
+        all_scientists = user_scientists + author_scientists
+        random.shuffle(all_scientists)
+        selected_scientists = all_scientists[:min(100, len(all_scientists))]
+        
+        # 8. Формируем список учёных для ответа
+        scientists_list = [
+            schemas.ScientistNode(
+                id=scientist['id'],
+                name=scientist['name'],
+                username=scientist['username'],
+                interests=scientist['interests']
+            )
+            for scientist in selected_scientists
+        ]
+        
+        return schemas.KnowledgeGraphResponse(
+            interests=interests_list,
+            scientists=scientists_list
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating knowledge graph: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating knowledge graph: {str(e)}"
         )
