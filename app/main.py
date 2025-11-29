@@ -1,7 +1,6 @@
 import time
 import logging
 import io
-import random
 from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, status, Query, UploadFile, File
@@ -626,7 +625,10 @@ async def get_recommendations(request: schemas.RecommendationRequest):
 
 
 @app.get("/knowledge-graph", response_model=schemas.KnowledgeGraphResponse)
-def get_knowledge_graph(db: Session = Depends(get_db)):
+def get_knowledge_graph(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     try:
         users = db.query(models.User).filter(models.User.interests_list.isnot(None)).all()
         interest_to_users = defaultdict(set)
@@ -661,10 +663,16 @@ def get_knowledge_graph(db: Session = Depends(get_db)):
             for interest in unique_interests
         ]
         
-        all_users = db.query(models.User).all()
-        user_scientists = []
+        current_user_interests = []
+        if current_user.interests_list:
+            current_user_interests = [i.strip() for i in current_user.interests_list.split(',') if i.strip()]
+        
+        all_users = db.query(models.User).filter(models.User.id != current_user.id).all()
+        user_scientists_with_scores = []
+        
         for user in all_users:
             user_interests_ids = []
+            user_interest_list = []
             if user.interests_list:
                 user_interest_list = [i.strip() for i in user.interests_list.split(',') if i.strip()]
                 for interest in user_interest_list:
@@ -674,18 +682,44 @@ def get_knowledge_graph(db: Session = Depends(get_db)):
             username = user.login if user.login else f"{user.first_name}{user.last_name}"
             name = f"{user.first_name} {user.last_name}"
             
-            user_scientists.append({
+            similarity_score = 0.0
+            if current_user_interests and user_interest_list:
+                common_interests = set(current_user_interests) & set(user_interest_list)
+                total_interests = set(current_user_interests) | set(user_interest_list)
+                if total_interests:
+                    similarity_score = len(common_interests) / len(total_interests)
+            
+            user_scientists_with_scores.append({
                 'id': user.id,
                 'name': name,
                 'username': username,
                 'interests': user_interests_ids,
-                'type': 'user'
+                'type': 'user',
+                'score': similarity_score
             })
         
+        author_scientists_with_scores = []
+        
+        if current_user_interests and recommender.df is not None and recommender.knn_model is not None:
+            try:
+                ml_recommendations = recommender.recommend(
+                    interests=current_user_interests,
+                    top_k=100
+                )
+                recommended_author_ids = {rec['author_id'] for rec in ml_recommendations}
+                recommendation_scores = {rec['author_id']: rec['total_score'] for rec in ml_recommendations}
+            except Exception as e:
+                logger.warning(f"ML recommendation failed, using fallback: {e}")
+                recommended_author_ids = set()
+                recommendation_scores = {}
+        else:
+            recommended_author_ids = set()
+            recommendation_scores = {}
+        
         all_author_interests = db.query(models.AuthorInterest).all()
-        author_scientists = []
         for ai in all_author_interests:
             author_interests_ids = []
+            author_interest_list = []
             if ai.interests_list:
                 author_interest_list = [i.strip() for i in ai.interests_list.split(',') if i.strip()]
                 for interest in author_interest_list:
@@ -696,16 +730,27 @@ def get_knowledge_graph(db: Session = Depends(get_db)):
             name_parts = author_name.split()
             username = "".join([part.replace(".", "").replace(",", "")[:5] for part in name_parts[:2]]) if name_parts else author_name[:10]
             
-            author_scientists.append({
+            similarity_score = 0.0
+            if current_user_interests and author_interest_list:
+                common_interests = set(current_user_interests) & set(author_interest_list)
+                total_interests = set(current_user_interests) | set(author_interest_list)
+                if total_interests:
+                    similarity_score = len(common_interests) / len(total_interests)
+            
+            if ai.author_id in recommended_author_ids:
+                similarity_score = max(similarity_score, recommendation_scores.get(ai.author_id, 0.0))
+            
+            author_scientists_with_scores.append({
                 'id': ai.id + 100000,
                 'name': author_name,
                 'username': username,
                 'interests': author_interests_ids,
-                'type': 'author'
+                'type': 'author',
+                'score': similarity_score
             })
         
-        all_scientists = user_scientists + author_scientists
-        random.shuffle(all_scientists)
+        all_scientists = user_scientists_with_scores + author_scientists_with_scores
+        all_scientists.sort(key=lambda x: x['score'], reverse=True)
         selected_scientists = all_scientists[:min(100, len(all_scientists))]
         
         scientists_list = [

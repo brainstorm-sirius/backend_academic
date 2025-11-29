@@ -277,6 +277,21 @@ uvicorn app.main:app --reload
 
 ### Запуск в Docker
 
+#### Использование docker-compose (рекомендуется)
+
+```bash
+# Запустить приложение
+docker-compose up -d
+
+# Просмотр логов
+docker-compose logs -f
+
+# Остановить приложение
+docker-compose down
+```
+
+#### Использование Docker напрямую
+
 ```bash
 # Соберите образ
 docker build -t academic-backend .
@@ -285,6 +300,8 @@ docker build -t academic-backend .
 docker run --rm -p 8000:8000 \
   -e SECRET_KEY=your-secret \
   -e DATABASE_URL=sqlite:///./users.db \
+  -v $(pwd)/users.db:/app/users.db \
+  -v $(pwd)/model:/app/model \
   academic-backend
 ```
 
@@ -493,7 +510,9 @@ curl -X POST http://localhost:8000/auth/register \
 #### Получить данные для knowledge graph
 `GET /knowledge-graph`
 
-Возвращает все уникальные интересы и 100 случайно выбранных учёных для визуализации графа знаний.
+**Требует авторизации**: Да (Bearer token)
+
+Возвращает все уникальные интересы и топ-100 наиболее релевантных учёных для текущего пользователя на основе их научных интересов. Учёные сортируются по степени совпадения интересов с текущим пользователем.
 
 **Ответ**:
 ```json
